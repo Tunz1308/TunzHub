@@ -19,7 +19,7 @@ local RADIO_PATTERNS = {"radio"}
 local KEY_Z = Enum.KeyCode.Z
 local KEY_X = Enum.KeyCode.X
 local KEY_C = Enum.KeyCode.C
-local KEY_ULT = Enum.KeyCode.F -- nếu ult là G thì đổi sang Enum.KeyCode.G
+local KEY_ULT = Enum.KeyCode.G -- nếu ult là G thì đổi sang Enum.KeyCode.G
 
 -- ===================== SERVICES & VARS =====================
 local plr = game.Players.LocalPlayer
