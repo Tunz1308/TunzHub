@@ -1,104 +1,80 @@
--- ✅ Debug PlaceId
-print("Game PlaceId:", game.PlaceId)
+-- ================== TunzHub.lua (safe boot) ==================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- 🔒 Chỉ chạy trong game có ID này (bạn thay số cho đúng game của bạn)
-if game.PlaceId ~= 103754275310547 then
-    warn("⛔ Script stopped: wrong game!")
+-- Fallback notify (nếu SetCore lỗi)
+local function notify(txt)
+    local ok = pcall(function()
+        game.StarterGui:SetCore("SendNotification", {Title="TunzHub", Text=txt, Duration=4})
+    end)
+    if not ok then
+        local parent = game:FindFirstChildOfClass("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+        local sg = Instance.new("ScreenGui")
+        sg.IgnoreGuiInset, sg.ResetOnSpawn = true, false
+        sg.Name = "TunzHubNotify"
+        sg.Parent = parent
+        local lb = Instance.new("TextLabel")
+        lb.Size, lb.BackgroundTransparency = UDim2.fromScale(1,0), 0.2
+        lb.Position, lb.TextSize = UDim2.new(0,0,0,0), 22
+        lb.Font, lb.TextColor3, lb.Text = Enum.Font.GothamBold, Color3.new(1,1,1), "TunzHub: "..txt
+        lb.Parent = sg
+        task.delay(4, function() if sg then sg:Destroy() end end)
+    end
+end
+
+print("[TunzHub] PlaceId:", game.PlaceId)
+notify("Script đã chạy ✅")
+
+-- ======= Kiểm tra PlaceId (để test TẠM thời tắt đi) =======
+local FORCE_RUN_ANY_GAME = true   -- set = false khi xong test
+local TARGET_PLACEID = 103754275310547 -- ĐỔI thành PlaceId thật của bạn!
+if (not FORCE_RUN_ANY_GAME) and (game.PlaceId ~= TARGET_PLACEID) then
+    warn("[TunzHub] Sai game -> dừng")
+    notify("Sai game, dừng chạy ❌")
     return
 end
 
--- 🖥️ Load UI Library (Kavo UI)
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Tunz Hub", "DarkTheme")
-
--- Tabs
-local FarmTab = Window:NewTab("Farm")
-local FarmSection = FarmTab:NewSection("Zombie")
-
-local AutoTab = Window:NewTab("Auto")
-local AutoSection = AutoTab:NewSection("Perks & Replay")
-
--- 📌 Common
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
-
+-- ======= Chờ nhân vật sẵn sàng =======
 local function getHRP()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     return char:WaitForChild("HumanoidRootPart")
 end
+pcall(getHRP)
 
--- 🧟 Auto Farm Zombie
-FarmSection:NewButton("Farm Zombie", "Auto find & attack zombie", function()
-    print("⚡ Auto Farm Zombie ON")
-    task.spawn(function()
-        while task.wait(1) do
-            local closest, dist = nil, math.huge
-            for _, mob in pairs(workspace:GetDescendants()) do
-                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob.Name:lower():find("zombie") then
-                    local root = mob:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        local mag = (getHRP().Position - root.Position).Magnitude
-                        if mag < dist then
-                            closest = root
-                            dist = mag
-                        end
-                    end
-                end
-            end
-            if closest then
-                getHRP().CFrame = closest.CFrame + Vector3.new(0, 3, 0)
-                for _, key in ipairs({Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C}) do
-                    VirtualInputManager:SendKeyEvent(true, key, false, game)
-                    task.wait(0.2)
-                    VirtualInputManager:SendKeyEvent(false, key, false, game)
-                end
-            end
-        end
+-- ======= Load UI lib (Kavo) có chống lỗi =======
+local Library
+do
+    local ok, lib = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
     end)
-end)
+    if ok and lib then
+        Library = lib
+    else
+        warn("[TunzHub] Kavo UI load fail:", lib)
+        notify("Kavo UI không tải được, dùng UI đơn giản.")
+    end
+end
 
--- 🎁 Auto Perks
-AutoSection:NewButton("Auto Perks", "Auto activate perks", function()
-    print("⚡ Auto Perks ON")
-    task.spawn(function()
-        while task.wait(5) do
-            for _, perk in pairs(LocalPlayer.Backpack:GetChildren()) do
-                if perk:IsA("Tool") and perk.Name:lower():find("perk") then
-                    perk.Parent = LocalPlayer.Character
-                    task.wait(0.2)
-                    perk:Activate()
-                end
-            end
-        end
+-- ======= Nếu có Kavo: tạo UI; nếu không: tạo UI tối giản =======
+local function createSimpleUI()
+    local parent = game:FindFirstChildOfClass("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+    local sg = Instance.new("ScreenGui"); sg.Name="TunzHubLite"; sg.Parent=parent
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0,180,0,40)
+    btn.Position = UDim2.new(0,20,0,60)
+    btn.Text = "Test nút (OK)"
+    btn.Parent = sg
+    btn.MouseButton1Click:Connect(function() notify("Nút hoạt động ✅") end)
+end
+
+if Library then
+    local Window = Library.CreateLib("Tunz Hub", "DarkTheme")
+    local Tab = Window:NewTab("Test")
+    local Sec = Tab:NewSection("Khởi động")
+    Sec:NewButton("Kiểm tra nút", "Nhấn để test notify", function()
+        notify("Nút hoạt động ✅")
     end)
-end)
-
--- 📻 Auto Radio
-AutoSection:NewButton("Auto Radio", "Find nearest radio & activate", function()
-    print("📻 Auto Radio ON")
-    task.spawn(function()
-        while task.wait(10) do
-            local closest, dist = nil, math.huge
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("ClickDetector") and obj.Parent and obj.Parent.Name:lower():find("radio") then
-                    local part = obj.Parent:IsA("BasePart") and obj.Parent or obj.Parent:FindFirstChildWhichIsA("BasePart")
-                    if part then
-                        local mag = (getHRP().Position - part.Position).Magnitude
-                        if mag < dist then
-                            closest = obj
-                            dist = mag
-                        end
-                    end
-                end
-            end
-            if closest then
-                local part = closest.Parent:IsA("BasePart") and closest.Parent or closest.Parent:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    getHRP().CFrame = part.CFrame + Vector3.new(0, 3, 0)
-                    task.wait(1)
-                    fireclickdetector(closest)
-                end
-            end
-        end
- 
+else
+    createSimpleUI()
+end
+-- ================== /end ==================
