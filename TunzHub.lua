@@ -1,5 +1,5 @@
 --// Load thư viện UI
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua")))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("Tunz Hub", "DarkTheme")
 
 --// Tab
@@ -13,7 +13,9 @@ getgenv().AutoFarm = false
 local function getNearestZombie()
     local closest, dist = nil, math.huge
     for _, mob in pairs(workspace:GetChildren()) do
-        if mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob.Name:lower():find("zombie") then
+        if mob:FindFirstChild("Humanoid") 
+        and mob:FindFirstChild("HumanoidRootPart") 
+        and mob.Name:lower():find("zombie") then
             local mag = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - mob.HumanoidRootPart.Position).Magnitude
             if mag < dist then
                 dist = mag
@@ -33,7 +35,7 @@ local function startFarm()
             if zombie and zombie:FindFirstChild("HumanoidRootPart") then
                 -- Dịch chuyển tới zombie
                 game.Players.LocalPlayer.Character:MoveTo(zombie.HumanoidRootPart.Position + Vector3.new(0,3,0))
-                -- Gửi attack (tuỳ game có thể khác)
+                -- Đánh (tạm thời click chuột trái)
                 pcall(function()
                     game:GetService("VirtualUser"):ClickButton1(Vector2.new())
                 end)
