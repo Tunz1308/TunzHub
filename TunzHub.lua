@@ -1,80 +1,64 @@
--- ================== TunzHub.lua (safe boot) ==================
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+--// Load thư viện UI
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua")))()
+local Window = Library.CreateLib("Tunz Hub", "DarkTheme")
 
--- Fallback notify (nếu SetCore lỗi)
-local function notify(txt)
-    local ok = pcall(function()
-        game.StarterGui:SetCore("SendNotification", {Title="TunzHub", Text=txt, Duration=4})
-    end)
-    if not ok then
-        local parent = game:FindFirstChildOfClass("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
-        local sg = Instance.new("ScreenGui")
-        sg.IgnoreGuiInset, sg.ResetOnSpawn = true, false
-        sg.Name = "TunzHubNotify"
-        sg.Parent = parent
-        local lb = Instance.new("TextLabel")
-        lb.Size, lb.BackgroundTransparency = UDim2.fromScale(1,0), 0.2
-        lb.Position, lb.TextSize = UDim2.new(0,0,0,0), 22
-        lb.Font, lb.TextColor3, lb.Text = Enum.Font.GothamBold, Color3.new(1,1,1), "TunzHub: "..txt
-        lb.Parent = sg
-        task.delay(4, function() if sg then sg:Destroy() end end)
+--// Tab
+local Tab = Window:NewTab("Farm")
+local Section = Tab:NewSection("Điều khiển")
+
+--// Biến trạng thái
+getgenv().AutoFarm = false
+
+--// Hàm tìm zombie gần nhất
+local function getNearestZombie()
+    local closest, dist = nil, math.huge
+    for _, mob in pairs(workspace:GetChildren()) do
+        if mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob.Name:lower():find("zombie") then
+            local mag = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - mob.HumanoidRootPart.Position).Magnitude
+            if mag < dist then
+                dist = mag
+                closest = mob
+            end
+        end
     end
+    return closest
 end
 
-print("[TunzHub] PlaceId:", game.PlaceId)
-notify("Script đã chạy ✅")
-
--- ======= Kiểm tra PlaceId (để test TẠM thời tắt đi) =======
-local FORCE_RUN_ANY_GAME = true   -- set = false khi xong test
-local TARGET_PLACEID = 103754275310547 -- ĐỔI thành PlaceId thật của bạn!
-if (not FORCE_RUN_ANY_GAME) and (game.PlaceId ~= TARGET_PLACEID) then
-    warn("[TunzHub] Sai game -> dừng")
-    notify("Sai game, dừng chạy ❌")
-    return
-end
-
--- ======= Chờ nhân vật sẵn sàng =======
-local function getHRP()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart")
-end
-pcall(getHRP)
-
--- ======= Load UI lib (Kavo) có chống lỗi =======
-local Library
-do
-    local ok, lib = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+--// Auto farm loop
+local function startFarm()
+    spawn(function()
+        while getgenv().AutoFarm do
+            task.wait(0.2)
+            local zombie = getNearestZombie()
+            if zombie and zombie:FindFirstChild("HumanoidRootPart") then
+                -- Dịch chuyển tới zombie
+                game.Players.LocalPlayer.Character:MoveTo(zombie.HumanoidRootPart.Position + Vector3.new(0,3,0))
+                -- Gửi attack (tuỳ game có thể khác)
+                pcall(function()
+                    game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                end)
+            end
+        end
     end)
-    if ok and lib then
-        Library = lib
-    else
-        warn("[TunzHub] Kavo UI load fail:", lib)
-        notify("Kavo UI không tải được, dùng UI đơn giản.")
-    end
 end
 
--- ======= Nếu có Kavo: tạo UI; nếu không: tạo UI tối giản =======
-local function createSimpleUI()
-    local parent = game:FindFirstChildOfClass("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
-    local sg = Instance.new("ScreenGui"); sg.Name="TunzHubLite"; sg.Parent=parent
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,180,0,40)
-    btn.Position = UDim2.new(0,20,0,60)
-    btn.Text = "Test nút (OK)"
-    btn.Parent = sg
-    btn.MouseButton1Click:Connect(function() notify("Nút hoạt động ✅") end)
-end
+--// Bật farm
+Section:NewButton("Khởi động", "Bật auto farm zombie", function()
+    getgenv().AutoFarm = true
+    startFarm()
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Tunz Hub";
+        Text = "Đã bật auto farm!";
+        Duration = 5;
+    })
+end)
 
-if Library then
-    local Window = Library.CreateLib("Tunz Hub", "DarkTheme")
-    local Tab = Window:NewTab("Test")
-    local Sec = Tab:NewSection("Khởi động")
-    Sec:NewButton("Kiểm tra nút", "Nhấn để test notify", function()
-        notify("Nút hoạt động ✅")
-    end)
-else
-    createSimpleUI()
-end
--- ================== /end ==================
+--// Dừng farm
+Section:NewButton("Dừng", "Tắt auto farm", function()
+    getgenv().AutoFarm = false
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Tunz Hub";
+        Text = "Đã tắt auto farm!";
+        Duration = 5;
+    })
+end)
